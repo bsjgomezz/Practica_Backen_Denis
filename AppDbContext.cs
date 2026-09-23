@@ -4,7 +4,8 @@ using Microsoft.EntityFrameworkCore;
 public class Item
 {
     public int Id { get; set; }
-    public string Nombre { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 
 // Contexto de Base de Datos
