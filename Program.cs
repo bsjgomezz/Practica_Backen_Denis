@@ -7,10 +7,10 @@ var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
 
-// configuracion Kestrel para que escuche simultaneamente en el puerto publico 5000 y el puerto administrativo 8080
+// configuracion Kestrel para que escuche simultaneamente en el puerto publico 5005 y el puerto administrativo 8080
 builder.WebHost.ConfigureKestrel(options =>
 {
-    options.ListenAnyIP(5271); // Puerto Público
+    options.ListenAnyIP(5005); // Puerto Público
     options.ListenAnyIP(8080); // Puerto Administrativo
 });
 
