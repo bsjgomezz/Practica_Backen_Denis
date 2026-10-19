@@ -6,6 +6,7 @@ services:
     container_name: dotnet_api
     restart: always
     ports:
-      - "5000:5000"
+      - "5005:5000"
+      - "8085:8080"
     environment:
       - ASPNETCORE_URLS=http://+:5000
