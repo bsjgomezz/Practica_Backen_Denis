@@ -21,7 +21,13 @@ web_api:
     depends_on:
       - postgres_db
     networks:
-      - app-network:
-          driver: bridge
+      - app-network
+      - volumes:
+      -   pgdata_vol:
+            networks:
+              app-network:
+                driver: bridge
+
+        
     
 

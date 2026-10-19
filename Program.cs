@@ -1,5 +1,5 @@
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,15 +7,14 @@ var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
 
-// configuracion Kestrel para que escuche simultaneamente en el puerto publico 5005 y el puerto administrativo 8080
+// configuracion Kestrel para que escuche simultaneamente en el puerto publico 5000 y el puerto administrativo 8080
 builder.WebHost.ConfigureKestrel(options =>
 {
-    options.ListenAnyIP(5005); // Puerto Público
+    options.ListenAnyIP(5000); // Puerto Público
     options.ListenAnyIP(8080); // Puerto Administrativo
 });
 
 var app = builder.Build();
-
 // Creación automática del esquema en la base de datos remota si no existe
 using (var scope = app.Services.CreateScope())
 {
@@ -58,27 +57,14 @@ app.MapGet("/api/status", (IConfiguration config, IHostEnvironment env) =>
 });
 
 // 2. Endpoint para Unidad 3 y 4: Persistencia y prueba de lectura
-//Metodo GET:
-app.MapGet("/api/items", async (AppDbContext db) =>
-{
-var items = await db.Items.ToListAsync();
-return Results.Ok(items);
-});
+// app.MapGet("/api/items", async (AppDbContext db) => await db.Items.ToListAsync());
 
 // 3. Endpoint para probar escrituras / CORS desde clientes web
-//Método POST:
-app.MapPost("/api/items", async ([FromBody] string name, AppDbContext db) =>
-{
-if (string.IsNullOrWhiteSpace(name))
-{return Results.BadRequest("El nombre del item no puede estar vacío.");
-}
-var newItem = new Item{Name = name, CreatedAt = DateTime.UtcNow};
-db.Items.Add(newItem);
-await db.SaveChangesAsync();
-return Results.Created($"/api/items/{newItem.Id}", newItem);
-});
-
-
+// app.MapPost("/api/items", async (Item item, AppDbContext db) => {
+//     db.Items.Add(item);
+//     await db.SaveChangesAsync();
+//     return Results.Created($"/api/items/{item.Id}", item);
+// });
 
 // Endpoint de diagnostico para Kestrel
 app.MapGet("/api/kestrel-info", () =>
@@ -117,6 +103,23 @@ app.MapGet("/api/kestrel-info", () =>
     };
 
     return Results.Ok(response);
+});
+
+//metodo GET para obtener los items:
+app.MapGet("/api/items", async (AppDbContext db) => {
+    var items = await db.Items.ToListAsync();
+    return Results.Ok(items);
+});
+
+//metodo POST para agregar un nuevo item
+app.MapPost("/api/items", async ([FromBody] string name, AppDbContext db) => {
+    if (string.IsNullOrWhiteSpace(name)){
+        return Results.BadRequest("El nombre del item no puede estar vacío.");
+    }
+    var newItem = new Item{Name = name, CreatedAt = DateTime.UtcNow};
+    db.Items.Add(newItem);
+    await db.SaveChangesAsync();
+    return Results.Created($"/api/items/{newItem.Id}", newItem);
 });
 
 app.Run();
