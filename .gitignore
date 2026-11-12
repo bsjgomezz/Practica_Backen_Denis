@@ -10,4 +10,5 @@
 .idea/
 
 ## Configuración sensible local
-appsettings.Local.jsondocs/
+appsettings.Local.json
+docs/
