@@ -27,6 +27,8 @@ app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
 });
+app.UseDefaultFiles();
+app.UseStaticFiles();
 // Creación automática del esquema en la base de datos si no existe
 using (var scope = app.Services.CreateScope())
 {

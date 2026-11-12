@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>TP Final UDI II - Inventario</title>
+<style>
+  body { font-family: Arial, sans-serif; max-width: 900px; margin: 20px auto; padding: 0 15px; background: #f4f4f4; }
+  h1 { color: #2c3e50; }
+  h2 { color: #34495e; border-bottom: 2px solid #ccc; padding-bottom: 5px; }
+  section { background: white; padding: 15px; margin-bottom: 20px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+  th { background: #2c3e50; color: white; }
+  form { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  input, select { padding: 6px; }
+  button { padding: 6px 12px; background: #2c3e50; color: white; border: none; border-radius: 4px; cursor: pointer; }
+  button:hover { background: #1a252f; }
+  button.danger { background: #c0392b; }
+  button.danger:hover { background: #922b21; }
+  #status-info { font-size: 0.9em; color: #555; }
+</style>
+</head>
+<body>
+
+<h1>Sistema de Inventario - TP Final UDI II</h1>
+<p id="status-info">Cargando estado...</p>
+
+<section>
+  <h2>Categorías</h2>
+  <table id="tabla-categorias">
+    <thead><tr><th>Id</th><th>Nombre</th></tr></thead>
+    <tbody></tbody>
+  </table>
+  <form id="form-categoria">
+    <input type="text" id="nueva-categoria" placeholder="Nombre de la categoría" required>
+    <button type="submit">Agregar categoría</button>
+  </form>
+</section>
+
+<section>
+  <h2>Items</h2>
+  <table id="tabla-items">
+    <thead>
+      <tr><th>Id</th><th>Nombre</th><th>Precio</th><th>Stock</th><th>Categoría</th><th>Acciones</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <form id="form-item">
+    <input type="text" id="item-nombre" placeholder="Nombre del item" required>
+    <input type="number" id="item-precio" placeholder="Precio" step="0.01" required>
+    <input type="number" id="item-stock" placeholder="Stock inicial" required>
+    <select id="item-categoria" required></select>
+    <button type="submit">Agregar item</button>
+  </form>
+</section>
+
+<section>
+  <h2>Movimientos de stock</h2>
+  <form id="form-movimiento">
+    <select id="mov-item" required></select>
+    <input type="number" id="mov-cantidad" placeholder="Cantidad (+/-)" required>
+    <input type="text" id="mov-motivo" placeholder="Motivo">
+    <button type="submit">Registrar movimiento</button>
+  </form>
+  <table id="tabla-movimientos">
+    <thead><tr><th>Item</th><th>Cantidad</th><th>Motivo</th><th>Fecha</th></tr></thead>
+    <tbody></tbody>
+  </table>
+</section>
+
+<script>
+let categorias = [];
+let items = [];
+
+// Cargar el estado de la API
+async function cargarStatus() {
+  const res = await fetch('/api/status');
+  const data = await res.json();
+  document.getElementById('status-info').textContent =
+    `App: ${data.appName} | Entorno: ${data.environment}`;
+}
+
+// Cargar categorías y llenar la tabla y los combos
+async function cargarCategorias() {
+  const res = await fetch('/api/categories');
+  categorias = await res.json();
+
+  const tbody = document.querySelector('#tabla-categorias tbody');
+  tbody.innerHTML = '';
+  categorias.forEach(c => {
+    tbody.innerHTML += `<tr><td>${c.id}</td><td>${c.name}</td></tr>`;
+  });
+
+  const selectItem = document.getElementById('item-categoria');
+  selectItem.innerHTML = categorias.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+}
+
+// Cargar items y llenar la tabla y el combo de movimientos
+async function cargarItems() {
+  const res = await fetch('/api/items');
+  items = await res.json();
+
+  const tbody = document.querySelector('#tabla-items tbody');
+  tbody.innerHTML = '';
+  items.forEach(i => {
+    const categoria = categorias.find(c => c.id === i.categoryId);
+    tbody.innerHTML += `<tr>
+      <td>${i.id}</td>
+      <td>${i.name}</td>
+      <td>$${i.price}</td>
+      <td>${i.stock}</td>
+      <td>${categoria ? categoria.name : i.categoryId}</td>
+      <td><button class="danger" onclick="borrarItem(${i.id})">Borrar</button></td>
+    </tr>`;
+  });
+
+  const selectMov = document.getElementById('mov-item');
+  selectMov.innerHTML = items.map(i => `<option value="${i.id}">${i.name} (stock: ${i.stock})</option>`).join('');
+}
+
+// Cargar movimientos de todos los items (uno por uno, usando el endpoint existente)
+async function cargarMovimientos() {
+  const tbody = document.querySelector('#tabla-movimientos tbody');
+  tbody.innerHTML = '';
+  for (const item of items) {
+    const res = await fetch(`/api/items/${item.id}/movements`);
+    const movimientos = await res.json();
+    movimientos.forEach(m => {
+      tbody.innerHTML += `<tr>
+        <td>${item.name}</td>
+        <td>${m.quantity}</td>
+        <td>${m.reason ?? ''}</td>
+        <td>${new Date(m.date).toLocaleString()}</td>
+      </tr>`;
+    });
+  }
+}
+
+// Agregar categoría (el endpoint recibe un string JSON plano, no un objeto)
+document.getElementById('form-categoria').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const nombre = document.getElementById('nueva-categoria').value;
+  await fetch('/api/categories', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(nombre)
+  });
+  document.getElementById('nueva-categoria').value = '';
+  await cargarCategorias();
+});
+
+// Agregar item
+document.getElementById('form-item').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const nuevoItem = {
+    name: document.getElementById('item-nombre').value,
+    price: parseFloat(document.getElementById('item-precio').value),
+    stock: parseInt(document.getElementById('item-stock').value),
+    categoryId: parseInt(document.getElementById('item-categoria').value)
+  };
+  await fetch('/api/items', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(nuevoItem)
+  });
+  document.getElementById('form-item').reset();
+  await cargarItems();
+  await cargarMovimientos();
+});
+
+// Borrar item
+async function borrarItem(id) {
+  if (!confirm('¿Seguro que querés borrar este item?')) return;
+  await fetch(`/api/items/${id}`, { method: 'DELETE' });
+  await cargarItems();
+  await cargarMovimientos();
+}
+
+// Registrar movimiento de stock
+document.getElementById('form-movimiento').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const movimiento = {
+    itemId: parseInt(document.getElementById('mov-item').value),
+    quantity: parseInt(document.getElementById('mov-cantidad').value),
+    reason: document.getElementById('mov-motivo').value
+  };
+  const res = await fetch('/api/movements', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(movimiento)
+  });
+  if (!res.ok) {
+    const error = await res.text();
+    alert('Error: ' + error);
+    return;
+  }
+  document.getElementById('form-movimiento').reset();
+  await cargarItems();
+  await cargarMovimientos();
+});
+
+// Inicializar la página
+async function iniciar() {
+  await cargarStatus();
+  await cargarCategorias();
+  await cargarItems();
+  await cargarMovimientos();
+}
+iniciar();
+</script>
+
+</body>
+</html>
