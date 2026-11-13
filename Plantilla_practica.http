@@ -1,6 +1,0 @@
-@Plantilla_practica_HostAddress = http://localhost:5271
-
-GET {{Plantilla_practica_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
